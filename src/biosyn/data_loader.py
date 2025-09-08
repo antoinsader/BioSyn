@@ -114,7 +114,6 @@ class DictionaryDataset():
                 if line == "": continue
                 cui, name = line.split("||")
                 data.append((name,cui))
-        
         data = np.array(data)
         return data
 
@@ -124,13 +123,7 @@ class CandidateDataset(Dataset):
     Candidate Dataset for:
         query_tokens, candidate_tokens, label
     """
-    def __init__(self, 
-                 queries, 
-                 dicts, 
-                 tokenizer, 
-                 max_length, 
-                 topk, 
-                #  d_ratio, 
+    def __init__(self, queries, dicts, tokenizer, max_length, topk, 
                 #  s_score_matrix, s_candidate_idxs
                  ):
         """
@@ -155,7 +148,6 @@ class CandidateDataset(Dataset):
         self.query_names, self.query_ids = [row[0] for row in queries], [row[1] for row in queries]
         self.dict_names, self.dict_ids = [row[0] for row in dicts], [row[1] for row in dicts]
         self.topk = topk
-        # self.n_dense = int(topk * d_ratio)
         self.n_dense = int(topk )
         # self.n_sparse = topk - self.n_dense
         self.tokenizer = tokenizer
@@ -182,19 +174,20 @@ class CandidateDataset(Dataset):
         
         # fill with sparse candidates first
         # topk_candidate_idx = s_candidate_idx[:self.n_sparse]
-        topk_candidate_idx = d_candidate_idx[:self.topk]
-
         # fill remaining candidates with dense
+        # topk_candidate_idx
         # for d_idx in d_candidate_idx:
         #     if len(topk_candidate_idx) >= self.topk:
         #         break
         #     if d_idx not in topk_candidate_idx:
         #         topk_candidate_idx = np.append(topk_candidate_idx,d_idx)
-        
+
+        topk_candidate_idx = d_candidate_idx[:self.topk]
+
         # sanity check
         assert len(topk_candidate_idx) == self.topk
         assert len(topk_candidate_idx) == len(set(topk_candidate_idx))
-        
+
         candidate_names = [self.dict_names[candidate_idx] for candidate_idx in topk_candidate_idx]
         # candidate_s_scores = self.s_score_matrix[query_idx][topk_candidate_idx]
         labels = self.get_labels(query_idx, topk_candidate_idx).astype(np.float32)

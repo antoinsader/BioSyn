@@ -65,7 +65,7 @@ def parse_args():
 
     # parser.add_argument('--dense_ratio', type=float,
     #                     default=0.5)
-
+    
     parser.add_argument('--save_checkpoint_all', action="store_true")
 
     args = parser.parse_args()
@@ -213,7 +213,7 @@ def main(args):
     train_set = CandidateDataset(
         queries = train_queries, 
         dicts = train_dictionary, 
-        tokenizer = biosyn.tokenizer, 
+        tokenizer = biosyn.get_dense_tokenizer(), 
         # s_score_matrix=train_sparse_score_matrix,
         # s_candidate_idxs=train_sparse_candidate_idxs,
         topk = args.topk, 
@@ -232,18 +232,25 @@ def main(args):
         # Important! This is iterative process because dense represenation changes as model is trained.
         LOGGER.info("Epoch {}/{}".format(epoch,args.epoch))
         LOGGER.info("train_set dense embedding for iterative candidate retrieval")
-        train_query_dense_embeds = biosyn.embed_dense(names=names_in_train_queries, show_progress=True)
-        train_dict_dense_embeds = biosyn.embed_dense(names=names_in_train_dictionary, show_progress=True)
-        train_dense_score_matrix = biosyn.get_score_matrix(
-            query_embeds=train_query_dense_embeds, 
-            dict_embeds=train_dict_dense_embeds
-        )
-        train_dense_candidate_idxs = biosyn.retrieve_candidate(
-            score_matrix=train_dense_score_matrix, 
-            topk=args.topk
-        )
-        # replace dense candidates in the train_set
-        train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
+
+        # train_query_dense_embeds = biosyn.embed_dense(names=names_in_train_queries, show_progress=True)
+        # train_dict_dense_embeds = biosyn.embed_dense(names=names_in_train_dictionary, show_progress=True)
+        # train_dense_score_matrix = biosyn.get_score_matrix(
+        #     query_embeds=train_query_dense_embeds, 
+        #     dict_embeds=train_dict_dense_embeds
+        # )
+        # train_dense_candidate_idxs = biosyn.retrieve_candidate(
+        #     score_matrix=train_dense_score_matrix, 
+        #     topk=args.topk
+        # )
+        # # replace dense candidates in the train_set
+        # train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
+
+
+        biosyn.embed_and_build_faiss(batch_size=4096)
+        cand_idxs = biosyn.embed_queries_with_search(batch_size=4096)
+        train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
+
 
         # train
         train_loss = train(args, data_loader=train_loader, model=model)

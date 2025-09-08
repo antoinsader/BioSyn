@@ -12,9 +12,11 @@ from transformers import (
     AutoModel,
     default_data_collator
 )
-# from huggingface_hub import hf_hub_url, cached_download
 from .rerankNet import RerankNet
+# from huggingface_hub import hf_hub_url, cached_download
 # from .sparse_encoder import SparseEncoder
+import faiss
+import json
 
 LOGGER = logging.getLogger()
 
@@ -31,22 +33,22 @@ class NamesDataset(torch.utils.data.Dataset):
 class BioSyn(object):
     """
     Wrapper class for dense encoder and sparse encoder
+
+    COMMENTED LINES ARE FOR DROPING SPARSE ENCODING
     """
 
-    def __init__(self, max_length, use_cuda, 
-                #  initial_sparse_weight=None
-                 ):
+    def __init__(self, max_length, use_cuda):
         self.max_length = max_length
         self.use_cuda = use_cuda
-        
+
         self.tokenizer = None
         self.encoder = None
         # self.sparse_encoder = None
         # self.sparse_weight = None
 
         # if initial_sparse_weight != None:
-        #     self.sparse_weight = self.init_sparse_weight(initial_sparse_weight)
-
+            # self.sparse_weight = self.init_sparse_weight(initial_sparse_weight)
+        
     # def init_sparse_weight(self, initial_sparse_weight):
     #     """
     #     Parameters
@@ -91,7 +93,7 @@ class BioSyn(object):
         # save dense encoder
         self.encoder.save_pretrained(path)
         self.tokenizer.save_pretrained(path)
-        # # save sparse encoder
+        # save sparse encoder
         # sparse_encoder_path = os.path.join(path,'sparse_encoder.pk')
         # self.sparse_encoder.save_encoder(path=sparse_encoder_path)
 
@@ -250,3 +252,178 @@ class BioSyn(object):
         dense_embeds = np.concatenate(dense_embeds, axis=0)
         
         return dense_embeds
+    
+    
+    # additional functions for faiss
+    
+    def embed_queries_with_search(self, queries_names, batch_size=64):
+        """
+            use the tokens of queries saved in memmap file before and embed them 
+            the embeddings are saved in memmap file of queries_embed_mmap_base
+        """
+        amp_dtype= torch.bfloat16
+
+        # #load query tokens
+        # with open(self.query_tokens_mmap_base + ".json") as f:
+        #     _tokens_meta = json.load(f)
+
+        # (tokens_size, max_length ) = _tokens_meta["shape"] 
+        # assert tokens_size > 0 and max_length == self.max_length
+
+        # query_tokens_inputs_path = self.query_tokens_mmap_base + self.tokens_input_ids_suffix
+        # query_tokens_att_path = self.query_tokens_mmap_base + self.tokens_att_masks_suffix
+        # query_tokens_inputs = np.memmap(
+        #     query_tokens_inputs_path,
+        #     dtype=np.int32,
+        #     shape=tuple(_tokens_meta["shape"]),
+        #     mode="r"
+        # )
+        # query_tokens_att_masks = np.memmap(
+        #     query_tokens_att_path,
+        #     dtype=np.int32,
+        #     shape=tuple(_tokens_meta["shape"]),
+        #     mode="r"
+        # )
+
+
+        #this is a bottleneck because tokenization should be before the training loop
+        queries_tokens = self.tokenizer(
+                queries_names,
+                padding="max_length", max_length=self.max_length, truncation=True, return_tensors="pt")
+
+
+        N = len(queries_names)
+        #start embeding and search
+        candidates_idxs = []
+        self.encoder.eval()
+        with torch.inference_mode():
+            for start in tqdm(range(0,N, batch_size), desc="embeding and search index for candidates", unit="bach"):
+                end = min(start+batch_size, N)
+
+
+
+                chunk_input_ids = queries_tokens["input_ids"][start:end]
+                chunk_att_mask = queries_tokens["attention_mask"][start:end]
+                # encoder expect long, and if on cuda, move to cuda from cpu
+                chunk_input_ids = torch.from_numpy(chunk_input_ids).to(device=self.device, dtype=torch.long)
+                chunk_att_mask = torch.from_numpy(chunk_att_mask).to(device=self.device, dtype=torch.long)
+                if self.has_fp16:
+                    with torch.autocast(device_type="cuda", dtype=amp_dtype):
+                        out_chunk = self.encoder(
+                            input_ids= chunk_input_ids,
+                            attention_mask=chunk_att_mask,
+                            return_dict=True
+                        )[0][:,0] # cls (chunk_size, hidden_size)
+                else:
+                    out_chunk = self.encoder(
+                        input_ids= chunk_input_ids,
+                        attention_mask=chunk_att_mask,
+                        return_dict=True
+                    )[0][:,0] # cls (chunk_size, hidden_size)
+
+                assert out_chunk is not None
+
+                if self.use_cuda:
+                    out_chunk = out_chunk.to("cuda", non_blocking=True).float().contiguous()
+                else:
+                    out_chunk = out_chunk.to("cpu").float().numpy()
+
+                _, chunk_cand_idxs = self.faiss_index.search(out_chunk, self.topk)
+                if self.use_cuda:
+                    chunk_cand_idxs = chunk_cand_idxs.cpu().numpy()
+                candidates_idxs.append(chunk_cand_idxs)
+                del chunk_cand_idxs, out_chunk
+        return np.vstack(candidates_idxs)
+
+
+
+    def embed_and_build_faiss(self, dictionary_names, batch_size=64):
+        #load meta for memmap dictionary tokens and then load the tokens input ids and att mask
+        with open(self.dict_tokens_mmap_base + ".json") as f:
+            _meta = json.load(f)
+
+        (tokens_size, max_length ) = _meta["shape"] 
+
+        assert tokens_size > 0 and max_length == self.max_length
+        amp_dtype= torch.bfloat16
+
+
+        # dictionary_tokens_input_ids = np.memmap(
+        #     self.dict_tokens_mmap_base + self.tokens_input_ids_suffix,
+        #     dtype=np.int32,
+        #     shape=(tokens_size, max_length ) ,
+        #     mode="r")
+
+        # dictionary_tokens_att_mask = np.memmap(
+        #     self.dict_tokens_mmap_base + self.tokens_att_masks_suffix,
+        #     dtype=np.int32,
+        #     shape=(tokens_size, max_length ) ,
+        #     mode="r")
+
+
+        if isinstance(dictionary_names, np.ndarray):
+            dictionary_names = dictionary_names.tolist()
+        dictionary_tokens = self.tokenizer(dictionary_names, padding="max_length", max_length=self.max_length, truncation=True, return_tensors="pt")
+
+
+
+        N = tokens_size
+        hidden_size = self.hidden_size
+
+
+
+        if self.use_cuda:
+            gpu_resources = faiss.StandardGpuResources()
+            #Index configurations
+            index_conf = faiss.GpuIndexFlatConfig()
+            index_conf.device = torch.cuda.current_device()
+            index_conf.useFloat16 = bool(self.has_fp16)
+
+            #make the index (this index is on gpu)
+            index = faiss.GpuIndexFlatIP(gpu_resources, hidden_size, index_conf)
+        else:
+            #make normal cpu index 
+            index = faiss.IndexFlatIP(hidden_size)
+
+        assert index is not None
+
+        self.encoder.eval()
+
+        # I am not using grad graphs here in this embedings for building the faiss index
+        with torch.inference_mode():
+            for start in tqdm(range(0,N, batch_size), desc="embeding and building faiss", unit="bach"):
+                end = min(start+batch_size, N)
+
+                # chunking then embeding
+                chunk_input_ids = dictionary_tokens["input_ids"][start:end]
+                chunk_att_mask = dictionary_tokens["attention_mask"][start:end]
+                # encoder expect long, and if on cuda, move to cuda from cpu
+                chunk_input_ids = torch.from_numpy(chunk_input_ids).to(device=self.device, dtype=torch.long)
+                chunk_att_mask = torch.from_numpy(chunk_att_mask).to(device=self.device, dtype=torch.long)
+                if self.has_fp16:
+                    with torch.autocast(device_type="cuda", dtype=amp_dtype):
+                        out_chunk = self.encoder(
+                            input_ids= chunk_input_ids,
+                            attention_mask=chunk_att_mask,
+                            return_dict=True
+                        )[0][:,0] # cls (chunk_size, hidden_size)
+                else:
+                    out_chunk = self.encoder(
+                        input_ids= chunk_input_ids,
+                        attention_mask=chunk_att_mask,
+                        return_dict=True
+                    )[0][:,0] # cls (chunk_size, hidden_size)
+
+                assert out_chunk is not None
+
+                if self.use_cuda:
+                    out_chunk = out_chunk.to("cuda", non_blocking=True).float().contiguous()
+                else:
+                    out_chunk = out_chunk.to("cpu").float().numpy()
+
+
+                index.add(out_chunk)
+                del out_chunk, chunk_input_ids,chunk_att_mask
+
+        self.faiss_index = index
+

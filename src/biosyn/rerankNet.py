@@ -15,8 +15,8 @@ class RerankNet(nn.Module):
                 #  sparse_weight, 
                  use_cuda):
 
-        LOGGER.info("RerankNet! learning_rate={}  use_cuda={}".format(
-            learning_rate,use_cuda
+        LOGGER.info("RerankNet! learning_rate={} weight_decay={}  use_cuda={}".format(
+            learning_rate,weight_decay,use_cuda
         ))
         super(RerankNet, self).__init__()
         self.encoder = encoder
@@ -37,11 +37,10 @@ class RerankNet(nn.Module):
 
         output : (N, topk)
         """
-        query_token, candidate_tokens, candidate_s_scores = x
+        query_token, candidate_tokens = x
         batch_size, topk, max_length = candidate_tokens['input_ids'].shape
 
         if self.use_cuda:
-            # candidate_s_scores = candidate_s_scores.cuda()
             query_token['input_ids'] = query_token['input_ids'].to('cuda')
             query_token['token_type_ids'] = query_token['token_type_ids'].to('cuda')
             query_token['attention_mask'] = query_token['attention_mask'].to('cuda')
@@ -68,8 +67,7 @@ class RerankNet(nn.Module):
         # score dense candidates
         candidate_d_score = torch.bmm(query_embed, candidate_embeds.permute(0,2,1)).squeeze(1)
         # score = self.sparse_weight * candidate_s_scores + candidate_d_score
-        # score =  candidate_s_scores + candidate_d_score
-        score =   candidate_d_score
+        score = candidate_d_score
         return score
 
     def reshape_candidates_for_encoder(self, candidates):
