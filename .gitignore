@@ -21,6 +21,9 @@ datasets/tac2017adr
 datasets/raw
 datasets/meddra
 
+myenv/
+
+
 processed_train
 processed_dev
 processed_traindev
@@ -32,6 +35,7 @@ processed_test
 error_analysis.json
 cache/
 output
+output_draft/
 tmp
 
 # tensorboard
