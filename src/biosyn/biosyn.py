@@ -43,6 +43,8 @@ class BioSyn(object):
 
         self.tokenizer = None
         self.encoder = None
+        self.device = torch.device("cuda" if self.use_cuda else "cpu")
+
         # self.sparse_encoder = None
         # self.sparse_weight = None
 
@@ -109,8 +111,10 @@ class BioSyn(object):
         return self
 
     def load_dense_encoder(self, model_name_or_path):
-        self.encoder = AutoModel.from_pretrained(model_name_or_path)
+        self.encoder = AutoModel.from_pretrained(model_name_or_path, use_safetensors=True)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.hidden_size = getattr(getattr(self.encoder, "config", None), "hidden_size", None)
+        
         if self.use_cuda:
             self.encoder = self.encoder.to("cuda")
 
@@ -307,7 +311,7 @@ class BioSyn(object):
                 # encoder expect long, and if on cuda, move to cuda from cpu
                 chunk_input_ids = torch.from_numpy(chunk_input_ids).to(device=self.device, dtype=torch.long)
                 chunk_att_mask = torch.from_numpy(chunk_att_mask).to(device=self.device, dtype=torch.long)
-                if self.has_fp16:
+                if self.use_cuda:
                     with torch.autocast(device_type="cuda", dtype=amp_dtype):
                         out_chunk = self.encoder(
                             input_ids= chunk_input_ids,
@@ -339,12 +343,12 @@ class BioSyn(object):
 
     def embed_and_build_faiss(self, dictionary_names, batch_size=64):
         #load meta for memmap dictionary tokens and then load the tokens input ids and att mask
-        with open(self.dict_tokens_mmap_base + ".json") as f:
-            _meta = json.load(f)
+        # with open(self.dict_tokens_mmap_base + ".json") as f:
+        #     _meta = json.load(f)
 
-        (tokens_size, max_length ) = _meta["shape"] 
+        # (tokens_size, max_length ) = _meta["shape"] 
 
-        assert tokens_size > 0 and max_length == self.max_length
+        # assert tokens_size > 0 and max_length == self.max_length
         amp_dtype= torch.bfloat16
 
 
@@ -367,7 +371,7 @@ class BioSyn(object):
 
 
 
-        N = tokens_size
+        N = len(dictionary_names)
         hidden_size = self.hidden_size
 
 
@@ -377,7 +381,7 @@ class BioSyn(object):
             #Index configurations
             index_conf = faiss.GpuIndexFlatConfig()
             index_conf.device = torch.cuda.current_device()
-            index_conf.useFloat16 = bool(self.has_fp16)
+            index_conf.useFloat16 = bool(self.use_cuda)
 
             #make the index (this index is on gpu)
             index = faiss.GpuIndexFlatIP(gpu_resources, hidden_size, index_conf)
@@ -400,7 +404,7 @@ class BioSyn(object):
                 # encoder expect long, and if on cuda, move to cuda from cpu
                 chunk_input_ids = torch.from_numpy(chunk_input_ids).to(device=self.device, dtype=torch.long)
                 chunk_att_mask = torch.from_numpy(chunk_att_mask).to(device=self.device, dtype=torch.long)
-                if self.has_fp16:
+                if self.use_cuda:
                     with torch.autocast(device_type="cuda", dtype=amp_dtype):
                         out_chunk = self.encoder(
                             input_ids= chunk_input_ids,

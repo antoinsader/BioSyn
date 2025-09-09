@@ -214,11 +214,11 @@ def main(args):
         queries = train_queries, 
         dicts = train_dictionary, 
         tokenizer = biosyn.get_dense_tokenizer(), 
+        topk = args.topk, 
+        max_length=args.max_length
         # s_score_matrix=train_sparse_score_matrix,
         # s_candidate_idxs=train_sparse_candidate_idxs,
-        topk = args.topk, 
         # d_ratio=args.dense_ratio,
-        max_length=args.max_length
     )
     train_loader = torch.utils.data.DataLoader(
         train_set,
