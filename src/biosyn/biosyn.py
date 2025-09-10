@@ -387,7 +387,7 @@ class BioSyn(object):
                     )[0][:,0] # cls (chunk_size, hidden_size)
 
                 assert out_chunk is not None
-                out_chunk = out_chunk.contiguous()
+                out_chunk = out_chunk.float().contiguous()
                 # out_chunk = out_chunk.float().cpu().numpy()
                 index.add(out_chunk)
                 del out_chunk, chunk_input_ids,chunk_att_mask
