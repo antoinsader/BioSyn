@@ -37,13 +37,14 @@ class BioSyn(object):
     COMMENTED LINES ARE FOR DROPING SPARSE ENCODING
     """
 
-    def __init__(self, max_length, use_cuda):
+    def __init__(self, max_length, use_cuda, topk):
         self.max_length = max_length
         self.use_cuda = use_cuda
 
         self.tokenizer = None
         self.encoder = None
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
+        self.topk = topk
 
         # self.sparse_encoder = None
         # self.sparse_weight = None
@@ -267,27 +268,8 @@ class BioSyn(object):
         """
         amp_dtype= torch.bfloat16
 
-        # #load query tokens
-        # with open(self.query_tokens_mmap_base + ".json") as f:
-        #     _tokens_meta = json.load(f)
-
-        # (tokens_size, max_length ) = _tokens_meta["shape"] 
-        # assert tokens_size > 0 and max_length == self.max_length
-
-        # query_tokens_inputs_path = self.query_tokens_mmap_base + self.tokens_input_ids_suffix
-        # query_tokens_att_path = self.query_tokens_mmap_base + self.tokens_att_masks_suffix
-        # query_tokens_inputs = np.memmap(
-        #     query_tokens_inputs_path,
-        #     dtype=np.int32,
-        #     shape=tuple(_tokens_meta["shape"]),
-        #     mode="r"
-        # )
-        # query_tokens_att_masks = np.memmap(
-        #     query_tokens_att_path,
-        #     dtype=np.int32,
-        #     shape=tuple(_tokens_meta["shape"]),
-        #     mode="r"
-        # )
+        if isinstance(queries_names, np.ndarray):
+            queries_names = queries_names.tolist()
 
 
         #this is a bottleneck because tokenization should be before the training loop
@@ -308,9 +290,10 @@ class BioSyn(object):
 
                 chunk_input_ids = queries_tokens["input_ids"][start:end]
                 chunk_att_mask = queries_tokens["attention_mask"][start:end]
-                # encoder expect long, and if on cuda, move to cuda from cpu
-                chunk_input_ids = torch.from_numpy(chunk_input_ids).to(device=self.device, dtype=torch.long)
-                chunk_att_mask = torch.from_numpy(chunk_att_mask).to(device=self.device, dtype=torch.long)
+
+                chunk_input_ids = chunk_input_ids.to(device=self.device, dtype=torch.long)
+                chunk_att_mask = chunk_att_mask.to(device=self.device, dtype=torch.long)
+                
                 if self.use_cuda:
                     with torch.autocast(device_type="cuda", dtype=amp_dtype):
                         out_chunk = self.encoder(
@@ -327,14 +310,9 @@ class BioSyn(object):
 
                 assert out_chunk is not None
 
-                if self.use_cuda:
-                    out_chunk = out_chunk.to("cuda", non_blocking=True).float().contiguous()
-                else:
-                    out_chunk = out_chunk.to("cpu").float().numpy()
+                out_chunk = out_chunk.float().cpu().numpy()
 
                 _, chunk_cand_idxs = self.faiss_index.search(out_chunk, self.topk)
-                if self.use_cuda:
-                    chunk_cand_idxs = chunk_cand_idxs.cpu().numpy()
                 candidates_idxs.append(chunk_cand_idxs)
                 del chunk_cand_idxs, out_chunk
         return np.vstack(candidates_idxs)
@@ -342,27 +320,7 @@ class BioSyn(object):
 
 
     def embed_and_build_faiss(self, dictionary_names, batch_size=64):
-        #load meta for memmap dictionary tokens and then load the tokens input ids and att mask
-        # with open(self.dict_tokens_mmap_base + ".json") as f:
-        #     _meta = json.load(f)
-
-        # (tokens_size, max_length ) = _meta["shape"] 
-
-        # assert tokens_size > 0 and max_length == self.max_length
         amp_dtype= torch.bfloat16
-
-
-        # dictionary_tokens_input_ids = np.memmap(
-        #     self.dict_tokens_mmap_base + self.tokens_input_ids_suffix,
-        #     dtype=np.int32,
-        #     shape=(tokens_size, max_length ) ,
-        #     mode="r")
-
-        # dictionary_tokens_att_mask = np.memmap(
-        #     self.dict_tokens_mmap_base + self.tokens_att_masks_suffix,
-        #     dtype=np.int32,
-        #     shape=(tokens_size, max_length ) ,
-        #     mode="r")
 
 
         if isinstance(dictionary_names, np.ndarray):
@@ -385,7 +343,6 @@ class BioSyn(object):
 
             #make the index (this index is on gpu)
             index = faiss.GpuIndexFlatIP(gpu_resources, hidden_size, index_conf)
-            print(f"Index is on GPU")
         else:
             #make normal cpu index 
             index = faiss.IndexFlatIP(hidden_size)
@@ -393,7 +350,6 @@ class BioSyn(object):
         assert index is not None
 
         self.encoder.eval()
-        print(f"index type: {type(index)}")
 
         # I am not using grad graphs here in this embedings for building the faiss index
         with torch.inference_mode():
@@ -422,9 +378,7 @@ class BioSyn(object):
 
                 assert out_chunk is not None
 
-                out_chunk = out_chunk.to("cpu", non_blocking=True).float().numpy()
-
-
+                out_chunk = out_chunk.float().cpu().numpy()
                 index.add(out_chunk)
                 del out_chunk, chunk_input_ids,chunk_att_mask
 

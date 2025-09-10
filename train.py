@@ -179,6 +179,7 @@ def main(args):
     biosyn = BioSyn(
         max_length=args.max_length,
         use_cuda=args.use_cuda,
+        topk=args.topk
         # initial_sparse_weight=args.initial_sparse_weight
     )
     # biosyn.init_sparse_encoder(corpus=names_in_train_dictionary)
@@ -247,8 +248,8 @@ def main(args):
         # train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
 
 
-        biosyn.embed_and_build_faiss(batch_size=4096)
-        cand_idxs = biosyn.embed_queries_with_search(batch_size=4096)
+        biosyn.embed_and_build_faiss(batch_size=1028, dictionary_names=names_in_train_dictionary)
+        cand_idxs = biosyn.embed_queries_with_search(batch_size=1028, queries_names=names_in_train_queries)
         train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
 
 
