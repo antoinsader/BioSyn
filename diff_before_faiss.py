@@ -230,53 +230,38 @@ def main(args):
     )
 
     start = time.time()
-    for epoch in range(1,args.epoch+1):
-        # embed dense representations for query and dictionary for train
-        # Important! This is iterative process because dense represenation changes as model is trained.
-        LOGGER.info("Epoch {}/{}".format(epoch,args.epoch))
-        LOGGER.info("train_set dense embedding for iterative candidate retrieval")
-
-        # train_query_dense_embeds = biosyn.embed_dense(names=names_in_train_queries, show_progress=True)
-        # train_dict_dense_embeds = biosyn.embed_dense(names=names_in_train_dictionary, show_progress=True)
-        # train_dense_score_matrix = biosyn.get_score_matrix(
-        #     query_embeds=train_query_dense_embeds, 
-        #     dict_embeds=train_dict_dense_embeds
-        # )
-        # train_dense_candidate_idxs = biosyn.retrieve_candidate(
-        #     score_matrix=train_dense_score_matrix, 
-        #     topk=args.topk
-        # )
-        # # replace dense candidates in the train_set
-        # train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
+    epoch = 1
+    # embed dense representations for query and dictionary for train
+    # Important! This is iterative process because dense represenation changes as model is trained.
+    LOGGER.info("Epoch {}/{}".format(epoch,args.epoch))
+    LOGGER.info("train_set dense embedding for iterative candidate retrieval")
 
 
-        biosyn.embed_and_build_faiss(batch_size=4096, dictionary_names=names_in_train_dictionary)
-        cand_idxs = biosyn.embed_queries_with_search(batch_size=4096, queries_names=names_in_train_queries)
-        train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
+
+    normal_cand_retreive_t0 = time.time()
+    train_query_dense_embeds = biosyn.embed_dense(names=names_in_train_queries, show_progress=True)
+    train_dict_dense_embeds = biosyn.embed_dense(names=names_in_train_dictionary, show_progress=True)
+    train_dense_score_matrix = biosyn.get_score_matrix(
+        query_embeds=train_query_dense_embeds, 
+        dict_embeds=train_dict_dense_embeds
+    )
+    train_dense_candidate_idxs = biosyn.retrieve_candidate(
+        score_matrix=train_dense_score_matrix, 
+        topk=args.topk
+    )
+    # replace dense candidates in the train_set
+    train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
+    print(f"Normal retreival took {time.time() - normal_cand_retreive_t0} secs")
 
 
-        # train
-        train_loss = train(args, data_loader=train_loader, model=model)
-        LOGGER.info('loss/train_per_epoch={}/{}'.format(train_loss,epoch))
-        
-        # save model every epoch
-        if args.save_checkpoint_all:
-            checkpoint_dir = os.path.join(args.output_dir, "checkpoint_{}".format(epoch))
-            if not os.path.exists(checkpoint_dir):
-                os.makedirs(checkpoint_dir)
-            biosyn.save_model(checkpoint_dir)
-        
-        # save model last epoch
-        if epoch == args.epoch:
-            biosyn.save_model(args.output_dir)
+    faiss_cand_retreive_t0 = time.time()
 
-    end = time.time()
-    training_time = end-start
-    training_hour = int(training_time/60/60)
-    training_minute = int(training_time/60 % 60)
-    training_second = int(training_time % 60)
-    LOGGER.info("Training Time!{} hours {} minutes {} seconds".format(training_hour, training_minute, training_second))
-    
+    biosyn.embed_and_build_faiss(batch_size=4096, dictionary_names=names_in_train_dictionary)
+    cand_idxs = biosyn.embed_queries_with_search(batch_size=4096, queries_names=names_in_train_queries)
+    train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
+    print(f"FAISS retreival took {time.time() - faiss_cand_retreive_t0} secs")
+
+
 if __name__ == '__main__':
     args = parse_args()
     main(args)
