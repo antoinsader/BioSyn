@@ -385,6 +385,7 @@ class BioSyn(object):
 
             #make the index (this index is on gpu)
             index = faiss.GpuIndexFlatIP(gpu_resources, hidden_size, index_conf)
+            print(f"Index is on GPU")
         else:
             #make normal cpu index 
             index = faiss.IndexFlatIP(hidden_size)
@@ -392,6 +393,7 @@ class BioSyn(object):
         assert index is not None
 
         self.encoder.eval()
+        print(f"index type: {type(index)}")
 
         # I am not using grad graphs here in this embedings for building the faiss index
         with torch.inference_mode():
@@ -402,8 +404,8 @@ class BioSyn(object):
                 chunk_input_ids = dictionary_tokens["input_ids"][start:end]
                 chunk_att_mask = dictionary_tokens["attention_mask"][start:end]
                 # encoder expect long, and if on cuda, move to cuda from cpu
-                chunk_input_ids = torch.from_numpy(chunk_input_ids).to(device=self.device, dtype=torch.long)
-                chunk_att_mask = torch.from_numpy(chunk_att_mask).to(device=self.device, dtype=torch.long)
+                chunk_input_ids = chunk_input_ids.to(device=self.device, dtype=torch.long)
+                chunk_att_mask = chunk_att_mask.to(device=self.device, dtype=torch.long)
                 if self.use_cuda:
                     with torch.autocast(device_type="cuda", dtype=amp_dtype):
                         out_chunk = self.encoder(
@@ -420,10 +422,7 @@ class BioSyn(object):
 
                 assert out_chunk is not None
 
-                if self.use_cuda:
-                    out_chunk = out_chunk.to("cuda", non_blocking=True).float().contiguous()
-                else:
-                    out_chunk = out_chunk.to("cpu").float().numpy()
+                out_chunk = out_chunk.to("cpu", non_blocking=True).float().numpy()
 
 
                 index.add(out_chunk)
