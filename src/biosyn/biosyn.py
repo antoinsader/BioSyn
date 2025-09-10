@@ -118,7 +118,7 @@ class BioSyn(object):
         
         if self.use_cuda:
             self.encoder = self.encoder.to("cuda")
-
+            self.encoder = torch.compile(self.encoder)
         return self.encoder, self.tokenizer
     
     # def load_sparse_encoder(self, model_name_or_path):
@@ -266,7 +266,7 @@ class BioSyn(object):
             use the tokens of queries saved in memmap file before and embed them 
             the embeddings are saved in memmap file of queries_embed_mmap_base
         """
-        amp_dtype= torch.bfloat16
+        amp_dtype= torch.float16
 
         if isinstance(queries_names, np.ndarray):
             queries_names = queries_names.tolist()
@@ -309,8 +309,8 @@ class BioSyn(object):
                     )[0][:,0] # cls (chunk_size, hidden_size)
 
                 assert out_chunk is not None
-
-                out_chunk = out_chunk.float().cpu().numpy()
+                out_chunk = out_chunk.contiguous()
+                # out_chunk = out_chunk.float().cpu().numpy()
 
                 _, chunk_cand_idxs = self.faiss_index.search(out_chunk, self.topk)
                 candidates_idxs.append(chunk_cand_idxs)
@@ -320,7 +320,7 @@ class BioSyn(object):
 
 
     def embed_and_build_faiss(self, dictionary_names, batch_size=64):
-        amp_dtype= torch.bfloat16
+        amp_dtype= torch.float16
 
 
         if isinstance(dictionary_names, np.ndarray):
@@ -377,8 +377,8 @@ class BioSyn(object):
                     )[0][:,0] # cls (chunk_size, hidden_size)
 
                 assert out_chunk is not None
-
-                out_chunk = out_chunk.float().cpu().numpy()
+                out_chunk = out_chunk.contiguous()
+                # out_chunk = out_chunk.float().cpu().numpy()
                 index.add(out_chunk)
                 del out_chunk, chunk_input_ids,chunk_att_mask
 

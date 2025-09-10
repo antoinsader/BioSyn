@@ -152,7 +152,7 @@ def main(args):
     init_logging()
     init_seed(args.seed)
     print(args)
-    
+
     # prepare for output
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -248,8 +248,8 @@ def main(args):
         # train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
 
 
-        biosyn.embed_and_build_faiss(batch_size=1028, dictionary_names=names_in_train_dictionary)
-        cand_idxs = biosyn.embed_queries_with_search(batch_size=1028, queries_names=names_in_train_queries)
+        biosyn.embed_and_build_faiss(batch_size=2048, dictionary_names=names_in_train_dictionary)
+        cand_idxs = biosyn.embed_queries_with_search(batch_size=2048, queries_names=names_in_train_queries)
         train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
 
 
@@ -278,3 +278,9 @@ def main(args):
 if __name__ == '__main__':
     args = parse_args()
     main(args)
+
+
+
+
+
+# python train.py --model_name_or_path='dmis-lab/biobert-base-cased-v1.1'    --train_dictionary_path="./data/data-ncbi-fair/train_dictionary.txt"  --train_dir="./data/data-ncbi-fair/traindev" --output_dir="./data/output"
