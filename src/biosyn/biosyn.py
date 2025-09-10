@@ -15,9 +15,9 @@ from transformers import (
 from .rerankNet import RerankNet
 # from huggingface_hub import hf_hub_url, cached_download
 # from .sparse_encoder import SparseEncoder
-import faiss
 import json
 
+import faiss
 #THIS LINE IS SO SO SO IMPORTANT !!!!
 import faiss.contrib.torch_utils
 
