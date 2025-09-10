@@ -367,8 +367,8 @@ class BioSyn(object):
                 end = min(start+batch_size, N)
 
                 # chunking then embeding
-                chunk_input_ids = dictionary_tokens["input_ids"][start:end].to(self.device, non_blocking=True)
-                chunk_att_mask = dictionary_tokens["attention_mask"][start:end].to(self.device, non_blocking=True)
+                chunk_input_ids = dictionary_tokens["input_ids"][start:end].to(self.device, dtype=torch.long)
+                chunk_att_mask = dictionary_tokens["attention_mask"][start:end].to(self.device, dtype=torch.long)
 
                 assert chunk_input_ids.device == self.device
 
@@ -387,7 +387,7 @@ class BioSyn(object):
                     )[0][:,0] # cls (chunk_size, hidden_size)
 
                 assert out_chunk is not None
-                out_chunk = out_chunk.float().contiguous()
+                out_chunk = out_chunk.contiguous()
                 # out_chunk = out_chunk.float().cpu().numpy()
                 index.add(out_chunk)
                 del out_chunk, chunk_input_ids,chunk_att_mask
