@@ -248,8 +248,8 @@ def main(args):
         # train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
 
 
-        biosyn.embed_and_build_faiss(batch_size=2048, dictionary_names=names_in_train_dictionary)
-        cand_idxs = biosyn.embed_queries_with_search(batch_size=2048, queries_names=names_in_train_queries)
+        biosyn.embed_and_build_faiss(batch_size=4096, dictionary_names=names_in_train_dictionary)
+        cand_idxs = biosyn.embed_queries_with_search(batch_size=4096, queries_names=names_in_train_queries)
         train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
 
 

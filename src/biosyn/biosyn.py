@@ -18,6 +18,10 @@ from .rerankNet import RerankNet
 import faiss
 import json
 
+#THIS LINE IS SO SO SO IMPORTANT !!!!
+import faiss.contrib.torch_utils
+
+
 LOGGER = logging.getLogger()
 
 class NamesDataset(torch.utils.data.Dataset):
@@ -328,6 +332,10 @@ class BioSyn(object):
         dictionary_tokens = self.tokenizer(dictionary_names, padding="max_length", max_length=self.max_length, truncation=True, return_tensors="pt")
 
 
+        if self.use_cuda:
+            dictionary_tokens["input_ids"]= dictionary_tokens["input_ids"].to(device=self.device, dtype=torch.long)
+            dictionary_tokens["attention_mask"]= dictionary_tokens["attention_mask"].to(device=self.device, dtype=torch.long)
+
 
         N = len(dictionary_names)
         hidden_size = self.hidden_size
@@ -348,6 +356,7 @@ class BioSyn(object):
             index = faiss.IndexFlatIP(hidden_size)
 
         assert index is not None
+        
 
         self.encoder.eval()
 
@@ -359,9 +368,9 @@ class BioSyn(object):
                 # chunking then embeding
                 chunk_input_ids = dictionary_tokens["input_ids"][start:end]
                 chunk_att_mask = dictionary_tokens["attention_mask"][start:end]
-                # encoder expect long, and if on cuda, move to cuda from cpu
-                chunk_input_ids = chunk_input_ids.to(device=self.device, dtype=torch.long)
-                chunk_att_mask = chunk_att_mask.to(device=self.device, dtype=torch.long)
+
+                assert chunk_input_ids.device == self.device
+
                 if self.use_cuda:
                     with torch.autocast(device_type="cuda", dtype=amp_dtype):
                         out_chunk = self.encoder(
