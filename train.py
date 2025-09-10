@@ -20,6 +20,8 @@ from src.biosyn import (
     BioSyn
 )
 
+torch.set_float32_matmul_precision('high')
+
 LOGGER = logging.getLogger()
 
 def parse_args():
