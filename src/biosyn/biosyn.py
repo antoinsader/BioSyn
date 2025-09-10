@@ -281,6 +281,8 @@ class BioSyn(object):
                 queries_names,
                 padding="max_length", max_length=self.max_length, truncation=True, return_tensors="pt")
 
+        queries_tokens["input_ids"] = queries_tokens["input_ids"].pin_memory()
+        queries_tokens["attention_mask"] = queries_tokens["attention_mask"].pin_memory()
 
         N = len(queries_names)
         #start embeding and search
@@ -332,9 +334,8 @@ class BioSyn(object):
         dictionary_tokens = self.tokenizer(dictionary_names, padding="max_length", max_length=self.max_length, truncation=True, return_tensors="pt")
 
 
-        if self.use_cuda:
-            dictionary_tokens["input_ids"]= dictionary_tokens["input_ids"].to(device=self.device, dtype=torch.long)
-            dictionary_tokens["attention_mask"]= dictionary_tokens["attention_mask"].to(device=self.device, dtype=torch.long)
+        dictionary_tokens["input_ids"]= dictionary_tokens["input_ids"].pin_memory()
+        dictionary_tokens["attention_mask"]= dictionary_tokens["attention_mask"].pin_memory()
 
 
         N = len(dictionary_names)
@@ -366,8 +367,8 @@ class BioSyn(object):
                 end = min(start+batch_size, N)
 
                 # chunking then embeding
-                chunk_input_ids = dictionary_tokens["input_ids"][start:end]
-                chunk_att_mask = dictionary_tokens["attention_mask"][start:end]
+                chunk_input_ids = dictionary_tokens["input_ids"][start:end].to(self.device, non_blocking=True)
+                chunk_att_mask = dictionary_tokens["attention_mask"][start:end].to(self.device, non_blocking=True)
 
                 assert chunk_input_ids.device == self.device
 
