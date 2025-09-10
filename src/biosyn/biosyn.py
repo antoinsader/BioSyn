@@ -368,7 +368,6 @@ class BioSyn(object):
                 chunk_input_ids = dictionary_tokens["input_ids"][start:end].to(self.device, dtype=torch.long)
                 chunk_att_mask = dictionary_tokens["attention_mask"][start:end].to(self.device, dtype=torch.long)
 
-                assert chunk_input_ids.device == self.device, f"chunk_input_ids.device: {chunk_input_ids.device}, self.device={self.device}"
 
                 if self.use_cuda:
                     with torch.autocast(device_type="cuda", dtype=amp_dtype):
