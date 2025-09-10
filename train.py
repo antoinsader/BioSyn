@@ -283,4 +283,4 @@ if __name__ == '__main__':
 
 
 
-# python train.py --model_name_or_path='dmis-lab/biobert-base-cased-v1.1'    --train_dictionary_path="./data/data-ncbi-fair/train_dictionary.txt"  --train_dir="./data/data-ncbi-fair/traindev" --output_dir="./data/output"
+# python train.py --use_cuda --train_batch_size=90  --model_name_or_path='dmis-lab/biobert-base-cased-v1.1'    --train_dictionary_path="./data/data-ncbi-fair/train_dictionary.txt"  --train_dir="./data/data-ncbi-fair/traindev" --output_dir="./data/output"

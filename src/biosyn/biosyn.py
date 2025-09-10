@@ -88,12 +88,10 @@ class BioSyn(object):
 
     # def get_sparse_encoder(self):
     #     assert (self.sparse_encoder is not None)
-        
     #     return self.sparse_encoder
 
     # def get_sparse_weight(self):
     #     assert (self.sparse_weight is not None)
-        
     #     return self.sparse_weight
 
     def save_model(self, path):
@@ -370,7 +368,7 @@ class BioSyn(object):
                 chunk_input_ids = dictionary_tokens["input_ids"][start:end].to(self.device, dtype=torch.long)
                 chunk_att_mask = dictionary_tokens["attention_mask"][start:end].to(self.device, dtype=torch.long)
 
-                assert chunk_input_ids.device == self.device
+                assert chunk_input_ids.device == self.device, f"chunk_input_ids.device: {chunk_input_ids.device}, self.device={self.device}"
 
                 if self.use_cuda:
                     with torch.autocast(device_type="cuda", dtype=amp_dtype):
