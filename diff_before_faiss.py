@@ -238,20 +238,20 @@ def main(args):
 
 
 
-    normal_cand_retreive_t0 = time.time()
-    train_query_dense_embeds = biosyn.embed_dense(names=names_in_train_queries, show_progress=True)
-    train_dict_dense_embeds = biosyn.embed_dense(names=names_in_train_dictionary, show_progress=True)
-    train_dense_score_matrix = biosyn.get_score_matrix(
-        query_embeds=train_query_dense_embeds, 
-        dict_embeds=train_dict_dense_embeds
-    )
-    train_dense_candidate_idxs = biosyn.retrieve_candidate(
-        score_matrix=train_dense_score_matrix, 
-        topk=args.topk
-    )
-    # replace dense candidates in the train_set
-    train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
-    print(f"Normal retreival took {time.time() - normal_cand_retreive_t0} secs")
+    # normal_cand_retreive_t0 = time.time()
+    # train_query_dense_embeds = biosyn.embed_dense(names=names_in_train_queries, show_progress=True)
+    # train_dict_dense_embeds = biosyn.embed_dense(names=names_in_train_dictionary, show_progress=True)
+    # train_dense_score_matrix = biosyn.get_score_matrix(
+    #     query_embeds=train_query_dense_embeds, 
+    #     dict_embeds=train_dict_dense_embeds
+    # )
+    # train_dense_candidate_idxs = biosyn.retrieve_candidate(
+    #     score_matrix=train_dense_score_matrix, 
+    #     topk=args.topk
+    # )
+    # # replace dense candidates in the train_set
+    # train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
+    # print(f"Normal retreival took {time.time() - normal_cand_retreive_t0} secs")
 
 
     faiss_cand_retreive_t0 = time.time()
@@ -270,4 +270,4 @@ if __name__ == '__main__':
 
 
 
-# python train.py --use_cuda   --model_name_or_path='dmis-lab/biobert-base-cased-v1.1'    --train_dictionary_path="./data/data-ncbi-fair/train_dictionary.txt"  --train_dir="./data/data-ncbi-fair/traindev" --output_dir="./data/output"  --train_batch_size=32
+# python diff_before_faiss.py --use_cuda   --model_name_or_path='dmis-lab/biobert-base-cased-v1.1'    --train_dictionary_path="./data/data-ncbi-fair/train_dictionary.txt"  --train_dir="./data/data-ncbi-fair/traindev" --output_dir="./data/output"  --train_batch_size=32
