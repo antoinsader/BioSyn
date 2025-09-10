@@ -317,6 +317,8 @@ class BioSyn(object):
                 # out_chunk = out_chunk.float().cpu().numpy()
 
                 _, chunk_cand_idxs = self.faiss_index.search(out_chunk, self.topk)
+                if self.use_cuda:
+                    chunk_cand_idxs = chunk_cand_idxs.cpu().numpy()
                 candidates_idxs.append(chunk_cand_idxs)
                 del chunk_cand_idxs, out_chunk
         return np.vstack(candidates_idxs)
