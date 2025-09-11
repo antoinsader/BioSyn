@@ -67,12 +67,14 @@ MODEL_NAME_OR_PATH=dmis-lab/biobert-base-cased-v1.1
 TRAIN_DICTIONARY_PATH=./data/data-ncbi-fair/train_dictionary.txt
 TRAIN_DIR=./data/data-ncbi-fair/traindev
 OUTPUT_DIR=./data/output
+TOKENIZED_OUTPUT_DIR=./data/output/tokenized
 
 CUDA_VISIBLE_DEVICES=1 python train.py \
     --model_name_or_path ${MODEL_NAME_OR_PATH} \
     --train_dictionary_path ${TRAIN_DICTIONARY_PATH} \
     --train_dir ${TRAIN_DIR} \
     --output_dir ${OUTPUT_DIR} \
+    --tokenizer_output_dir=${TOKENIZED_OUTPUT_DIR} \
     --use_cuda \
     --topk 20 \
     --epoch 10 \
