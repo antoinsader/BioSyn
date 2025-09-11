@@ -92,44 +92,6 @@ def init_seed(seed=None):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
     
-def load_dictionary(dictionary_path):
-    """
-    load dictionary
-    
-    Parameters
-    ----------
-    dictionary_path : str
-        a path of dictionary
-    """
-    dictionary = DictionaryDataset(
-            dictionary_path = dictionary_path
-    )
-    
-    return dictionary.data
-    
-def load_queries(data_dir, filter_composite, filter_duplicate, filter_cuiless):
-    """
-    load query data
-    
-    Parameters
-    ----------
-    is_train : bool
-        train or dev
-    filter_composite : bool
-        filter composite mentions
-    filter_duplicate : bool
-        filter duplicate queries
-    filter_cuiless : bool
-        filter samples with cuiless
-    """
-    dataset = QueryDataset(
-        data_dir=data_dir,
-        filter_composite=filter_composite,
-        filter_duplicate=filter_duplicate,
-        filter_cuiless=filter_cuiless
-    )
-    
-    return dataset.data
 
 def train(args, data_loader, model):
     LOGGER.info("train!")

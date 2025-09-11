@@ -37,6 +37,7 @@ cache/
 output
 output_draft/
 tmp
+data/
 
 # tensorboard
 runs/
