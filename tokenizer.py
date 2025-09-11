@@ -13,7 +13,7 @@ from src.biosyn import (
     QueryDataset, 
     DictionaryDataset,
 )
-
+import config
 
 
 def load_dictionary(dictionary_path):
@@ -127,6 +127,7 @@ def parse_args():
     parser.add_argument('--tokenizer_output_dir', type=str, required=True,
                         help='Directory for tokenizer output')
     parser.add_argument('--max_length', default=25, type=int)
+    parser.add_argument('--draft',  action="store_true")
 
     args = parser.parse_args()
     return args
@@ -142,8 +143,15 @@ def init_logging():
 
 def main(args):
     print(f"args: {args}")
-    model_name_or_path,train_dictionary_path, train_dir, tokenizer_output_dir = args.model_name_or_path,args.train_dictionary_path, args.train_dir, args.tokenizer_output_dir
-    max_length = args.max_length
+    model_name_or_path, train_dictionary_path, train_dir  = args.model_name_or_path,args.train_dictionary_path, args.train_dir
+
+    queries_dir, dictionary_dir = config.queries_dir , config.dictionary_dir
+    queries_files_prefix, dictionary_files_prefix =  config.queries_files_prefix , config.dictionary_files_prefix
+    ids_file_suffix,tokens_inputs_file_suffix, tokens_attentions_file_suffix = config.ids_file_suffix, config.tokens_inputs_file_suffix, config.tokens_attentions_file_suffix
+
+
+    tokenizer_output_dir = args.tokenizer_output_dir
+    max_length, draft = args.max_length, args.draft
 
     LOGGER.info(f"init tokenizer from {model_name_or_path}")
 
@@ -158,34 +166,45 @@ def main(args):
         filter_cuiless=True
     )
 
-    query_names = [row[0] for row in train_queries]
-    dictionary_names = [row[0] for row in train_dictionary]
+    if args.draft:
+        train_dictionary = train_dictionary[:100]
+        train_queries = train_queries[:10]
+        tokenizer_output_dir = tokenizer_output_dir + "_draft"
 
 
-    query_tokenized_dir = tokenizer_output_dir + '/queries'
-    dictionary_tokenized_dir = tokenizer_output_dir + '/dictionary'
+    query_names, query_ids = [row[0] for row in train_queries], [row[1] for row in train_queries]
+    dictionary_names, dictionary_ids = [row[0] for row in train_dictionary], [row[1] for row in train_dictionary]
+
+
+    query_tokenized_dir = tokenizer_output_dir + queries_dir
+    dictionary_tokenized_dir = tokenizer_output_dir + dictionary_dir
 
     os.makedirs(query_tokenized_dir, exist_ok=True)
     os.makedirs(dictionary_tokenized_dir, exist_ok=True)
 
-    query_tokenized_mmap_base = query_tokenized_dir + "/queries_"
-    dictionary_tokenized_mmap_base = dictionary_tokenized_dir + "/dictionary_"
+    query_tokenized_mmap_base = query_tokenized_dir + queries_files_prefix
+    dictionary_tokenized_mmap_base = dictionary_tokenized_dir + dictionary_files_prefix
+
+    #save ids
+    np.save(query_tokenized_mmap_base + ids_file_suffix, query_ids)
+    np.save(dictionary_tokenized_mmap_base + ids_file_suffix, dictionary_ids)
 
 
+    # Tokenize queries
     t0 = time.time()
-
-
     tok_queries =  tokenize_names_with_memmap(
         tokenizer = tokenizer, 
         names=query_names, 
         mmap_path_base=query_tokenized_mmap_base, 
         max_length=max_length, 
-        tokenized_inputs_suffix="_inputs.mmap", 
-        tokenized_att_suffix="_att.mmap"
+        tokenized_inputs_suffix=tokens_inputs_file_suffix, 
+        tokenized_att_suffix=tokens_attentions_file_suffix
     )
     if tok_queries:
         LOGGER.info(f"queries has {len(query_names)} names, was tokenized in dir: {query_tokenized_dir}, took time: {time.time()-t0}s")
 
+
+    # Tokenize dictionary
     t0 = time.time()
     tok_dicts = tokenize_names_with_memmap(
         tokenizer = tokenizer, 

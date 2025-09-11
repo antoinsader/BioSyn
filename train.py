@@ -19,6 +19,7 @@ from src.biosyn import (
     RerankNet, 
     BioSyn
 )
+import config
 
 torch.set_float32_matmul_precision('high')
 
@@ -37,8 +38,12 @@ def parse_args():
                     help='train dictionary path')
     parser.add_argument('--train_dir', type=str, required=True,
                     help='training set directory')
+
     parser.add_argument('--output_dir', type=str, required=True,
                         help='Directory for output')
+
+    parser.add_argument('--tokenizer_output_dir', type=str, required=True,
+                        help='Directory for tokenizer')
     
     # Tokenizer settings
     parser.add_argument('--max_length', default=25, type=int)
@@ -47,7 +52,8 @@ def parse_args():
     parser.add_argument('--seed',  type=int, 
                         default=0)
     parser.add_argument('--use_cuda',  action="store_true")
-    parser.add_argument('--draft',  action="store_true")
+    #Draft argument was moved to tokenizer.py
+    # parser.add_argument('--draft',  action="store_true")
     parser.add_argument('--topk',  type=int, 
                         default=20)
     parser.add_argument('--learning_rate',
@@ -120,70 +126,43 @@ def main(args):
     # prepare for output
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-        
-    # load dictionary and queries
-    train_dictionary = load_dictionary(dictionary_path=args.train_dictionary_path)
-    train_queries = load_queries(
-        data_dir = args.train_dir, 
-        filter_composite=True,
-        filter_duplicate=True,
-        filter_cuiless=True
-    )
 
-    if args.draft:
-        train_dictionary = train_dictionary[:100]
-        train_queries = train_queries[:10]
-        args.output_dir = args.output_dir + "_draft"
-        
-    # filter only names
-    names_in_train_dictionary = train_dictionary[:,0]
-    names_in_train_queries = train_queries[:,0]
 
-    # load BERT tokenizer, dense_encoder, sparse_encoder
-    biosyn = BioSyn(
-        max_length=args.max_length,
-        use_cuda=args.use_cuda,
-        topk=args.topk
-        # initial_sparse_weight=args.initial_sparse_weight
-    )
-    # biosyn.init_sparse_encoder(corpus=names_in_train_dictionary)
-    biosyn.load_dense_encoder(
-        model_name_or_path=args.model_name_or_path
-    )
-    
-    # load rerank model
-    model = RerankNet(
-        learning_rate=args.learning_rate, 
-        weight_decay=args.weight_decay,
-        encoder = biosyn.get_dense_encoder(),
-        # sparse_weight=biosyn.get_sparse_weight(),
-        use_cuda=args.use_cuda
-    )
+    queries_dir, dictionary_dir = config.queries_dir , config.dictionary_dir
+    queries_files_prefix, dictionary_files_prefix =  config.queries_files_prefix , config.dictionary_files_prefix
+    ids_file_suffix,tokens_inputs_file_suffix, tokens_attentions_file_suffix = config.ids_file_suffix, config.tokens_inputs_file_suffix, config.tokens_attentions_file_suffix
 
-    # embed sparse representations for query and dictionary
-    # Important! This is one time process because sparse represenation never changes.
-    # LOGGER.info("Sparse embedding")
-    # train_query_sparse_embeds = biosyn.embed_sparse(names=names_in_train_queries)
-    # train_dict_sparse_embeds = biosyn.embed_sparse(names=names_in_train_dictionary)
-    # train_sparse_score_matrix = biosyn.get_score_matrix(
-    #     query_embeds=train_query_sparse_embeds, 
-    #     dict_embeds=train_dict_sparse_embeds
-    # )
-    # train_sparse_candidate_idxs = biosyn.retrieve_candidate(
-    #     score_matrix=train_sparse_score_matrix, 
-    #     topk=args.topk
-    # )
+    tokenizer_output_dir = args.tokenizer_output_dir
+    query_tokenized_mmap_base = query_tokenized_dir + queries_files_prefix
+    dictionary_tokenized_mmap_base = dictionary_tokenized_dir + dictionary_files_prefix
+    query_tokenized_dir = tokenizer_output_dir + queries_dir
+    dictionary_tokenized_dir = tokenizer_output_dir + dictionary_dir
+
+
+
+    #senity check
+    assert os.path.isfile(query_tokenized_mmap_base + ids_file_suffix), f"Please execute tokenizer.py before"
+
+    query_ids = np.load(query_tokenized_mmap_base + ids_file_suffix)
+    dictionary_ids = np.load(dictionary_tokenized_mmap_base + ids_file_suffix )
+
+
+
+
+
+
 
     # prepare for data loader of train and dev
     train_set = CandidateDataset(
-        queries = train_queries, 
-        dicts = train_dictionary, 
+        query_ids = query_ids, 
+        dictionary_ids = dictionary_ids, 
         tokenizer = biosyn.get_dense_tokenizer(), 
         topk = args.topk, 
-        max_length=args.max_length
-        # s_score_matrix=train_sparse_score_matrix,
-        # s_candidate_idxs=train_sparse_candidate_idxs,
-        # d_ratio=args.dense_ratio,
+        max_length=args.max_length,
+        query_tokenized_mmap_base=query_tokenized_mmap_base,
+        dictionary_tokenized_mmap_base=dictionary_tokenized_mmap_base,
+        tokens_inputs_file_suffix=tokens_inputs_file_suffix,
+        tokens_attentions_file_suffix=tokens_attentions_file_suffix
     )
     train_loader = torch.utils.data.DataLoader(
         train_set,
@@ -191,43 +170,49 @@ def main(args):
         shuffle=True,
     )
 
+    # load BERT tokenizer, dense_encoder, sparse_encoder
+    biosyn = BioSyn(
+        max_length=args.max_length,
+        use_cuda=args.use_cuda,
+        topk=args.topk,
+        tokens=train_set.tokens
+    )
+    biosyn.load_dense_encoder(
+        model_name_or_path=args.model_name_or_path
+    )
+
+    # load rerank model
+    model = RerankNet(
+        learning_rate=args.learning_rate, 
+        weight_decay=args.weight_decay,
+        encoder = biosyn.get_dense_encoder(),
+        use_cuda=args.use_cuda
+    )
+
+
+
     start = time.time()
     for epoch in range(1,args.epoch+1):
-        # embed dense representations for query and dictionary for train
-        # Important! This is iterative process because dense represenation changes as model is trained.
         LOGGER.info("Epoch {}/{}".format(epoch,args.epoch))
         LOGGER.info("train_set dense embedding for iterative candidate retrieval")
 
-        # train_query_dense_embeds = biosyn.embed_dense(names=names_in_train_queries, show_progress=True)
-        # train_dict_dense_embeds = biosyn.embed_dense(names=names_in_train_dictionary, show_progress=True)
-        # train_dense_score_matrix = biosyn.get_score_matrix(
-        #     query_embeds=train_query_dense_embeds, 
-        #     dict_embeds=train_dict_dense_embeds
-        # )
-        # train_dense_candidate_idxs = biosyn.retrieve_candidate(
-        #     score_matrix=train_dense_score_matrix, 
-        #     topk=args.topk
-        # )
-        # # replace dense candidates in the train_set
-        # train_set.set_dense_candidate_idxs(d_candidate_idxs=train_dense_candidate_idxs)
-
-
-        biosyn.embed_and_build_faiss(batch_size=4096, dictionary_names=names_in_train_dictionary)
-        cand_idxs = biosyn.embed_queries_with_search(batch_size=4096, queries_names=names_in_train_queries)
+        biosyn.embed_and_build_faiss(batch_size=4096)
+        cand_idxs = biosyn.embed_queries_with_search(batch_size=4096)
         train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
 
 
         # train
         train_loss = train(args, data_loader=train_loader, model=model)
         LOGGER.info('loss/train_per_epoch={}/{}'.format(train_loss,epoch))
-        
+
+
         # save model every epoch
         if args.save_checkpoint_all:
             checkpoint_dir = os.path.join(args.output_dir, "checkpoint_{}".format(epoch))
             if not os.path.exists(checkpoint_dir):
                 os.makedirs(checkpoint_dir)
             biosyn.save_model(checkpoint_dir)
-        
+
         # save model last epoch
         if epoch == args.epoch:
             biosyn.save_model(args.output_dir)

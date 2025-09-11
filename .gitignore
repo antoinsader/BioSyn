@@ -51,3 +51,8 @@ biosyn.egg-info
 semantic
 
 !preprocess/resources/*
+
+
+
+test.py
+test.ipynb

@@ -28,9 +28,9 @@ class RerankNet(nn.Module):
             {'params': self.encoder.parameters()}], 
             lr=self.learning_rate, weight_decay=self.weight_decay
         )
-        
+
         self.criterion = marginal_nll
-        
+
     def forward(self, x):
         """
         query : (N, h), candidates : (N, topk, h)
@@ -56,14 +56,14 @@ class RerankNet(nn.Module):
             attention_mask=query_token['attention_mask'].squeeze(1)
         )
         query_embed = query_embed[0][:,0].unsqueeze(1) # query : [batch_size, 1, hidden]
-        
+
         candidate_embeds = self.encoder(
             input_ids=candidate_tokens['input_ids'].reshape(-1, max_length),
             token_type_ids=candidate_tokens['token_type_ids'].reshape(-1, max_length),
             attention_mask=candidate_tokens['attention_mask'].reshape(-1, max_length)
         )
         candidate_embeds = candidate_embeds[0][:,0].reshape(batch_size, topk, -1) # [batch_size, topk, hidden]
-        
+
         # score dense candidates
         candidate_d_score = torch.bmm(query_embed, candidate_embeds.permute(0,2,1)).squeeze(1)
         # score = self.sparse_weight * candidate_s_scores + candidate_d_score
