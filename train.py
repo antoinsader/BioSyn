@@ -1,3 +1,4 @@
+from metrics import MetricsLogger
 import numpy as np
 import torch
 import argparse
@@ -99,12 +100,13 @@ def init_seed(seed=None):
     torch.backends.cudnn.deterministic = True
     
 
-def train(args, data_loader, model):
+def train(args, data_loader, model, metrics, epoch):
     LOGGER.info("train!")
-    
+
     train_loss = 0
     train_steps = 0
     model.train()
+    batches_start_time = time.time()
     for i, data in tqdm(enumerate(data_loader), total=len(data_loader)):
         model.optimizer.zero_grad()
         batch_x, batch_y = data
@@ -115,9 +117,10 @@ def train(args, data_loader, model):
         train_loss += loss.item()
         train_steps += 1
 
+    metrics.log_event(f"Epoch_{epoch}_BATCHES_END", t0=batches_start_time)
     train_loss /= (train_steps + 1e-9)
     return train_loss
-    
+
 def main(args):
     init_logging()
     init_seed(args.seed)
@@ -128,6 +131,8 @@ def main(args):
         os.makedirs(args.output_dir)
 
 
+
+    metrics = MetricsLogger(LOGGER, confs=config, tag="training")
     queries_dir, dictionary_dir = config.queries_dir , config.dictionary_dir
     queries_files_prefix, dictionary_files_prefix =  config.queries_files_prefix , config.dictionary_files_prefix
     ids_file_suffix,tokens_inputs_file_suffix, tokens_attentions_file_suffix = config.ids_file_suffix, config.tokens_inputs_file_suffix, config.tokens_attentions_file_suffix
@@ -137,12 +142,8 @@ def main(args):
     dictionary_tokenized_dir = tokenizer_output_dir + dictionary_dir
     query_tokenized_mmap_base = query_tokenized_dir + queries_files_prefix
     dictionary_tokenized_mmap_base = dictionary_tokenized_dir + dictionary_files_prefix
-    
-
-
     #senity check
     assert os.path.isfile(query_tokenized_mmap_base + ids_file_suffix), f"Please execute tokenizer.py before"
-
     query_ids = np.load(query_tokenized_mmap_base + ids_file_suffix)
     dictionary_ids = np.load(dictionary_tokenized_mmap_base + ids_file_suffix )
 
@@ -195,13 +196,15 @@ def main(args):
         LOGGER.info("Epoch {}/{}".format(epoch,args.epoch))
         LOGGER.info("train_set dense embedding for iterative candidate retrieval")
 
+        start_time_faiss = time.time()
         biosyn.embed_and_build_faiss(batch_size=4096)
         cand_idxs = biosyn.embed_queries_with_search(batch_size=4096)
         train_set.set_dense_candidate_idxs(d_candidate_idxs=cand_idxs)
+        metrics.log_event(f"EPOCH_{epoch}_FAISS", start_time_faiss, log_immediate=True)
 
 
         # train
-        train_loss = train(args, data_loader=train_loader, model=model)
+        train_loss = train(args, data_loader=train_loader, model=model, metrics=metrics, epoch=epoch)
         LOGGER.info('loss/train_per_epoch={}/{}'.format(train_loss,epoch))
 
 
@@ -217,6 +220,7 @@ def main(args):
             biosyn.save_model(args.output_dir)
 
     end = time.time()
+    metrics.log_event("Train finished", t0=start)
     training_time = end-start
     training_hour = int(training_time/60/60)
     training_minute = int(training_time/60 % 60)

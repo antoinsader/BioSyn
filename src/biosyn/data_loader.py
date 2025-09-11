@@ -200,7 +200,7 @@ class CandidateDataset(Dataset):
         }
 
 
-        LOGGER.info("CandidateDataset! len(queries)={} len(dicts)={} topk={} ".format(
+        LOGGER.info("CandidateDataset: len(queries)={} len(dicts)={} topk={} ".format(
             self.tokens["query_inputs"].shape[0],self.tokens["dictionary_inputs"].shape[0], topk))
 
 
