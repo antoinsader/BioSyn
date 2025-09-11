@@ -131,7 +131,6 @@ class CandidateDataset(Dataset):
         self, 
         query_ids, 
         dictionary_ids, 
-        tokenizer, 
         max_length, 
         topk,
         query_tokenized_mmap_base,
@@ -147,8 +146,6 @@ class CandidateDataset(Dataset):
             A list of cuis (id)
         dictionary_ids : list
             A list of cuis (id)
-        tokenizer : BertTokenizer
-            A BERT tokenizer for dense embedding
         topk : int
             The number of candidates
 
@@ -164,7 +161,6 @@ class CandidateDataset(Dataset):
 
         self.topk = topk
         self.n_dense = int(topk )
-        self.tokenizer = tokenizer
         self.max_length = max_length
 
         self.d_candidate_idxs = None

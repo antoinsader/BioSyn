@@ -156,7 +156,6 @@ def main(args):
     train_set = CandidateDataset(
         query_ids = query_ids, 
         dictionary_ids = dictionary_ids, 
-        tokenizer = biosyn.get_dense_tokenizer(), 
         topk = args.topk, 
         max_length=args.max_length,
         query_tokenized_mmap_base=query_tokenized_mmap_base,
