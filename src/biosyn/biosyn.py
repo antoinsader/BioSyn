@@ -242,8 +242,6 @@ class BioSyn(object):
             "attention_mask": torch.from_numpy(self.tokens["query_attention"]).pin_memory(),
         }
 
-        if isinstance(queries_names, np.ndarray):
-            queries_names = queries_names.tolist()
 
 
         N = tokens_size
