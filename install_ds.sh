@@ -28,7 +28,6 @@ pip install --upgrade pip
 pip install --index-url https://download.pytorch.org/whl/cu121 torch
 pip install faiss-gpu-cu12
 pip install tqdm transformers requests psutil
-pip install memory-profiler
 
 echo "Setup complete!"
 

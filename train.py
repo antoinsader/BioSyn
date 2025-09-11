@@ -133,11 +133,11 @@ def main(args):
     ids_file_suffix,tokens_inputs_file_suffix, tokens_attentions_file_suffix = config.ids_file_suffix, config.tokens_inputs_file_suffix, config.tokens_attentions_file_suffix
 
     tokenizer_output_dir = args.tokenizer_output_dir
-    query_tokenized_mmap_base = query_tokenized_dir + queries_files_prefix
-    dictionary_tokenized_mmap_base = dictionary_tokenized_dir + dictionary_files_prefix
     query_tokenized_dir = tokenizer_output_dir + queries_dir
     dictionary_tokenized_dir = tokenizer_output_dir + dictionary_dir
-
+    query_tokenized_mmap_base = query_tokenized_dir + queries_files_prefix
+    dictionary_tokenized_mmap_base = dictionary_tokenized_dir + dictionary_files_prefix
+    
 
 
     #senity check
@@ -232,4 +232,6 @@ if __name__ == '__main__':
 
 
 
-# python train.py --use_cuda   --model_name_or_path='dmis-lab/biobert-base-cased-v1.1'    --train_dictionary_path="./data/data-ncbi-fair/train_dictionary.txt"  --train_dir="./data/data-ncbi-fair/traindev" --output_dir="./data/output"  --train_batch_size=32
+# python train.py --use_cuda --tokenizer_output_dir='./data/output/tokenized'  --model_name_or_path='dmis-lab/biobert-base-cased-v1.1'    --train_dictionary_path="./data/data-ncbi-fair/train_dictionary.txt"  --train_dir="./data/data-ncbi-fair/traindev" --output_dir="./data/output"  --train_batch_size=32
+
+
