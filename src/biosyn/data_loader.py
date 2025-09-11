@@ -175,25 +175,25 @@ class CandidateDataset(Dataset):
         self.tokens = {
             "dictionary_inputs":  np.memmap(
                 dictionary_input_ids_mmap_path,
-                mode="r",
+                mode="r+",
                 dtype=np.int32,
                 shape=self.load_mmap_shape(dictionary_tokenized_mmap_base) 
             ),
             "dictionary_attention":  np.memmap(
                 dictionary_attention_mask_mmap_path,
-                mode="r",
+                mode="r+",
                 dtype=np.int32,
                 shape=self.load_mmap_shape(dictionary_tokenized_mmap_base) 
             ),
             "query_inputs":  np.memmap(
                 queries_input_ids_mmap_path,
-                mode="r",
+                mode="r+",
                 dtype=np.int32,
                 shape=self.load_mmap_shape(query_tokenized_mmap_base) 
             ),
             "query_attention":  np.memmap(
                 queries_attention_mask_mmap_path,
-                mode="r",
+                mode="r+",
                 dtype=np.int32,
                 shape=self.load_mmap_shape(query_tokenized_mmap_base) 
             )
