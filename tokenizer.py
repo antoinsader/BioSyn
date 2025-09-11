@@ -211,8 +211,8 @@ def main(args):
         names=dictionary_names, 
         mmap_path_base=dictionary_tokenized_mmap_base, 
         max_length=max_length, 
-        tokenized_inputs_suffix="_inputs.mmap", 
-        tokenized_att_suffix="_att.mmap"
+        tokenized_inputs_suffix=tokens_inputs_file_suffix, 
+        tokenized_att_suffix=tokens_attentions_file_suffix
     )
     if tok_dicts:
         LOGGER.info(f"dictionary has {len(dictionary_names)} names, was tokenized in dir: {dictionary_tokenized_dir}, took time: {time.time()-t0}s")
