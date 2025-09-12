@@ -69,7 +69,7 @@ class MetricsLogger:
             (free, total) = self.current_gpu_mem_usage()
             msg += f" | GPU memory total/free: {total:.1f}/{free:.1f}MB"
             (alloc, alloc_peak, res, res_peak) = self.current_gpu_stats()
-            msg += f" | CUDA: allocated/peak: {alloc:.1f}/{alloc_peak:.1f}MB, reserved/peak {res:.1f}{res_peak:.1f}MB"
+            msg += f" | CUDA: allocated/peak: {alloc:.1f}/{alloc_peak:.1f}MB, reserved/peak {res:.1f}/{res_peak:.1f}MB"
 
         return self.logger.info(f"\n{msg}") if log_immediate else self.messages.append(f"\n{msg}")
 

@@ -146,12 +146,12 @@ class CandidateDataset(Dataset):
         dictionary_tokenized_mmap_base = dictionary_tokenized_dir + config.dictionary_files_prefix
 
         #senity check
-        assert os.path.isfile(query_tokenized_mmap_base + config.ids_file_suffix), f"Please execute tokenizer.py before"
+        assert os.path.isfile(query_tokenized_mmap_base + config.cuis_file_suffix), f"Please execute tokenizer.py before"
 
         
 
-        self.query_ids = np.load(query_tokenized_mmap_base + config.ids_file_suffix)
-        self.dictionary_ids = np.load(dictionary_tokenized_mmap_base + config.ids_file_suffix )
+        self.query_ids = np.load(query_tokenized_mmap_base + config.cuis_file_suffix)
+        self.dictionary_ids = np.load(dictionary_tokenized_mmap_base + config.cuis_file_suffix )
 
 
         self.topk = topk

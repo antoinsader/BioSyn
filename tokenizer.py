@@ -147,7 +147,7 @@ def main(args):
 
     queries_dir, dictionary_dir = config.queries_dir , config.dictionary_dir
     queries_files_prefix, dictionary_files_prefix =  config.queries_files_prefix , config.dictionary_files_prefix
-    ids_file_suffix,tokens_inputs_file_suffix, tokens_attentions_file_suffix = config.ids_file_suffix, config.tokens_inputs_file_suffix, config.tokens_attentions_file_suffix
+    cuis_file_suffix,tokens_inputs_file_suffix, tokens_attentions_file_suffix = config.cuis_file_suffix, config.tokens_inputs_file_suffix, config.tokens_attentions_file_suffix
 
 
     tokenizer_output_dir = args.tokenizer_output_dir
@@ -172,8 +172,28 @@ def main(args):
         tokenizer_output_dir = tokenizer_output_dir + "_draft"
 
 
-    query_names, query_ids = [row[0] for row in train_queries], [row[1] for row in train_queries]
-    dictionary_names, dictionary_ids = [row[0] for row in train_dictionary], [row[1] for row in train_dictionary]
+    query_names, query_cuis = [row[0] for row in train_queries], [row[1] for row in train_queries]
+    dictionary_names, dictionary_cuis = [row[0] for row in train_dictionary], [row[1] for row in train_dictionary]
+
+
+
+    dictionary_cuis_set = set(dictionary_cuis)
+    queries_found_cuis = 0
+    for q_cui in query_cuis:
+        if q_cui in dictionary_cuis_set:
+            queries_found_cuis += 1
+
+    if queries_found_cuis != len(dictionary_cuis):
+        LOGGER.info(f"some queries cuis were not found in dictionary.. will try to remove MESH..")
+        dictionary_cuis = [d_id.replace("MESH:", "").lower()  for d_id in dictionary_cuis]
+        query_cuis = [q_id.replace("MESH:", "").lower()  for q_id in query_cuis]
+        dictionary_cuis_set = set(dictionary_cuis)
+        queries_found_cuis = 0
+        for q_cui in query_cuis:
+            if q_cui in dictionary_cuis_set:
+                queries_found_cuis += 1
+        assert queries_found_cuis == len(dictionary_cuis), f"queries cuis found number: {queries_found_cuis}, len(dictionary_cuis):{len(dictionary_cuis)} "
+
 
 
     query_tokenized_dir = tokenizer_output_dir + queries_dir
@@ -186,8 +206,8 @@ def main(args):
     dictionary_tokenized_mmap_base = dictionary_tokenized_dir + dictionary_files_prefix
 
     #save ids
-    np.save(query_tokenized_mmap_base + ids_file_suffix, query_ids)
-    np.save(dictionary_tokenized_mmap_base + ids_file_suffix, dictionary_ids)
+    np.save(query_tokenized_mmap_base + cuis_file_suffix, query_cuis)
+    np.save(dictionary_tokenized_mmap_base + cuis_file_suffix, dictionary_cuis)
 
 
     # Tokenize queries
