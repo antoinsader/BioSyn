@@ -129,35 +129,30 @@ class CandidateDataset(Dataset):
     """
     def __init__(
         self, 
-        query_ids, 
-        dictionary_ids, 
         max_length, 
         topk,
-        query_tokenized_mmap_base,
-        dictionary_tokenized_mmap_base,
-        tokens_inputs_file_suffix,
-        tokens_attentions_file_suffix
+        config,
+        tokenizer_output_dir
         ):
         """
-        Retrieve top-k candidates based on sparse/dense embedding
-        Parameters
-        ----------
-        query_ids : list
-            A list of cuis (id)
-        dictionary_ids : list
-            A list of cuis (id)
-        topk : int
-            The number of candidates
-
-        query_tokenized_mmap_base,
-        dictionary_tokenized_mmap_base,
-        tokens_inputs_file_suffix,
-        tokens_attentions_file_suffix:
-            Those are configuration strings should be the same as when you execute tokenizer.py
+        Retrieve top-k candidates based on dense embedding
         """
 
-        self.query_ids = query_ids
-        self.dict_ids = dictionary_ids
+
+
+        query_tokenized_dir = tokenizer_output_dir + config.queries_dir
+        dictionary_tokenized_dir = tokenizer_output_dir + config.dictionary_dir
+        query_tokenized_mmap_base = query_tokenized_dir + config.queries_files_prefix
+        dictionary_tokenized_mmap_base = dictionary_tokenized_dir + config.dictionary_files_prefix
+
+        #senity check
+        assert os.path.isfile(query_tokenized_mmap_base + config.ids_file_suffix), f"Please execute tokenizer.py before"
+
+        
+
+        self.query_ids = np.load(query_tokenized_mmap_base + config.ids_file_suffix)
+        self.dictionary_ids = np.load(dictionary_tokenized_mmap_base + config.ids_file_suffix )
+
 
         self.topk = topk
         self.n_dense = int(topk )
@@ -166,11 +161,11 @@ class CandidateDataset(Dataset):
         self.d_candidate_idxs = None
 
 
-        queries_input_ids_mmap_path = query_tokenized_mmap_base + tokens_inputs_file_suffix
-        queries_attention_mask_mmap_path = query_tokenized_mmap_base + tokens_attentions_file_suffix
+        queries_input_ids_mmap_path = query_tokenized_mmap_base + config.tokens_inputs_file_suffix
+        queries_attention_mask_mmap_path = query_tokenized_mmap_base + config.tokens_attentions_file_suffix
 
-        dictionary_input_ids_mmap_path = dictionary_tokenized_mmap_base + tokens_inputs_file_suffix
-        dictionary_attention_mask_mmap_path = dictionary_tokenized_mmap_base + tokens_attentions_file_suffix
+        dictionary_input_ids_mmap_path = dictionary_tokenized_mmap_base + config.tokens_inputs_file_suffix
+        dictionary_attention_mask_mmap_path = dictionary_tokenized_mmap_base + config.tokens_attentions_file_suffix
 
         self.tokens = {
             "dictionary_inputs":  np.memmap(
@@ -199,6 +194,8 @@ class CandidateDataset(Dataset):
             )
         }
 
+        assert len(self.query_ids) ==  self.tokens["query_inputs"].shape[0]
+        assert len(self.dictionary_ids) ==  self.tokens["dictionary_attention"].shape[0]
 
         LOGGER.info("CandidateDataset: len(queries)={} len(dicts)={} topk={} ".format(
             self.tokens["query_inputs"].shape[0],self.tokens["dictionary_inputs"].shape[0], topk))

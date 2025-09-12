@@ -1,3 +1,5 @@
+from genericpath import isfile
+from types import new_class
 from metrics import MetricsLogger
 import numpy as np
 import torch
@@ -21,6 +23,7 @@ from src.biosyn import (
     BioSyn
 )
 import config
+from datetime import datetime
 
 torch.set_float32_matmul_precision('high')
 
@@ -80,13 +83,43 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def init_logging():
+def init_logging(confs):
+    global_log_path = confs.global_log_path
+
+    log_global_data = []
+
+    if not os.path.isfile(global_log_path):
+        with open(global_log_path, "w") as f:
+            json.dump(log_global_data,f)
+
+    with open(global_log_path, "r") as f:
+        log_global_data = json.load(f)
+
+
+    last_log_number  = log_global_data[-1]["id"] if len(log_global_data) > 0  else 0
+    current_global_log_number = last_log_number + 1 
+    log_global_data.append({"id": current_global_log_number})
+
+    with open(global_log_path, "w") as f:
+        json.dump(log_global_data, f)
+
+    os.makedirs(confs.logs_dir, exist_ok=True)
+    datestr = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_path = confs.logs_dir + f"/log_{current_global_log_number}_{datestr}.log"
     LOGGER.setLevel(logging.INFO)
-    fmt = logging.Formatter('%(asctime)s: [ %(message)s ]',
-                            '%m/%d/%Y %I:%M:%S %p')
+    fmt = logging.Formatter('%(message)s')
+
     console = logging.StreamHandler()
     console.setFormatter(fmt)
     LOGGER.addHandler(console)
+    
+    file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+    file_handler.setFormatter(fmt)
+    LOGGER.addHandler(file_handler)
+
+
+    return log_path,  log_global_data
+
 
 def init_seed(seed=None):
     if seed is None:
@@ -122,7 +155,7 @@ def train(args, data_loader, model, metrics, epoch):
     return train_loss
 
 def main(args):
-    init_logging()
+    log_path,  log_global_data= init_logging(confs=config)
     init_seed(args.seed)
     print(args)
 
@@ -133,42 +166,23 @@ def main(args):
 
 
     metrics = MetricsLogger(LOGGER, confs=config, tag="training")
-    queries_dir, dictionary_dir = config.queries_dir , config.dictionary_dir
-    queries_files_prefix, dictionary_files_prefix =  config.queries_files_prefix , config.dictionary_files_prefix
-    ids_file_suffix,tokens_inputs_file_suffix, tokens_attentions_file_suffix = config.ids_file_suffix, config.tokens_inputs_file_suffix, config.tokens_attentions_file_suffix
-
-    tokenizer_output_dir = args.tokenizer_output_dir
-    query_tokenized_dir = tokenizer_output_dir + queries_dir
-    dictionary_tokenized_dir = tokenizer_output_dir + dictionary_dir
-    query_tokenized_mmap_base = query_tokenized_dir + queries_files_prefix
-    dictionary_tokenized_mmap_base = dictionary_tokenized_dir + dictionary_files_prefix
-    #senity check
-    assert os.path.isfile(query_tokenized_mmap_base + ids_file_suffix), f"Please execute tokenizer.py before"
-    query_ids = np.load(query_tokenized_mmap_base + ids_file_suffix)
-    dictionary_ids = np.load(dictionary_tokenized_mmap_base + ids_file_suffix )
-
-
-
-
-
-
 
     # prepare for data loader of train and dev
     train_set = CandidateDataset(
-        query_ids = query_ids, 
-        dictionary_ids = dictionary_ids, 
         topk = args.topk, 
         max_length=args.max_length,
-        query_tokenized_mmap_base=query_tokenized_mmap_base,
-        dictionary_tokenized_mmap_base=dictionary_tokenized_mmap_base,
-        tokens_inputs_file_suffix=tokens_inputs_file_suffix,
-        tokens_attentions_file_suffix=tokens_attentions_file_suffix
+        config=config,
+        tokenizer_output_dir = args.tokenizer_output_dir
     )
+
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=args.train_batch_size,
         shuffle=True,
     )
+
+
+
 
     # load BERT tokenizer, dense_encoder, sparse_encoder
     biosyn = BioSyn(
@@ -221,12 +235,23 @@ def main(args):
 
     end = time.time()
     metrics.log_event("Train finished", t0=start)
+
     training_time = end-start
-    training_hour = int(training_time/60/60)
-    training_minute = int(training_time/60 % 60)
-    training_second = int(training_time % 60)
-    LOGGER.info("Training Time!{} hours {} minutes {} seconds".format(training_hour, training_minute, training_second))
-    
+    training_time_str = f"{int(training_time/60/60)}h, {int(training_time/60 % 60)}mins, {int(training_time % 60)}secs"
+
+
+    #Log in global:
+    with open(config.global_log_path, "w") as f:
+        log_global_data[-1]["queries size"]  = len(train_set.query_ids)
+        log_global_data[-1]["dictionary size"]  = len(train_set.dictionary_ids)
+        log_global_data[-1]["finished time"]  = training_time_str
+        log_global_data[-1]["log details file"]  = log_path
+        json.dump(log_global_data,f)
+
+    LOGGER.info(f"Training Time: {training_time_str} ")
+    LOGGER.info(f"Logs saved in: {log_path}")
+
+
 if __name__ == '__main__':
     args = parse_args()
     main(args)
