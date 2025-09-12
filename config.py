@@ -1,4 +1,5 @@
-
+import torch
+use_cuda = torch.cuda.is_available() 
 
 #[TOKENIZER]
 queries_dir, dictionary_dir = '/queries', '/dictionary'
