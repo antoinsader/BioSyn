@@ -259,7 +259,7 @@ class CandidateDataset(Dataset):
     def get_labels(self, query_idx, candidate_idxs):
         labels = np.array([])
         query_id = self.query_ids[query_idx]
-        candidate_ids = np.array(self.dict_ids)[candidate_idxs]
+        candidate_ids = np.array(self.dictionary_ids)[candidate_idxs]
         for candidate_id in candidate_ids:
             label = self.check_label(query_id, candidate_id)
             labels = np.append(labels, label)
