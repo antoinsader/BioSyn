@@ -4,6 +4,7 @@ import os, time,   psutil, torch
 class MetricsLogger:
     def __init__(self, logger, confs, tag="train"):
         self.use_cuda = confs.use_cuda
+        self.device = "cuda" if self.use_cuda else "cpu"
         self.logger = logger
         self.tag = tag
         self.process = psutil.Process(os.getpid())
