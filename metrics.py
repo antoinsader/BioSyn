@@ -14,7 +14,7 @@ class MetricsLogger:
 
 
     def current_cpu_mem_usage(self):
-        rss = self.proc.memory_info().rss / (1024 * 2)
+        rss = self.process.memory_info().rss / (1024 * 2)
         self.cpu_memory_used = rss
         return rss
 
