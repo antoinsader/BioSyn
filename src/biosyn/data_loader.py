@@ -161,8 +161,7 @@ class CandidateDataset(Dataset):
         query_token = self.tokenizer(query_name, max_length=self.max_length, padding='max_length', truncation=True, return_tensors='pt')
 
         d_candidate_idx = self.d_candidate_idxs[query_idx]
-        topk_candidate_idx = np.array([])
-        
+        topk_candidate_idx = np.array([], dtype=int)        
         # fill remaining candidates with dense
         for d_idx in d_candidate_idx:
             if len(topk_candidate_idx) >= self.topk:
