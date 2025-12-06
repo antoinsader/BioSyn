@@ -27,7 +27,6 @@ def parse_args():
     # Run settings
     parser.add_argument('--use_cuda',  action="store_true")
     parser.add_argument('--topk',  type=int, default=20)
-    parser.add_argument('--score_mode',  type=str, default='hybrid', choices=['hybrid','dense','sparse'])
     parser.add_argument('--output_dir', type=str, default='./output/', help='Directory for output')
     parser.add_argument('--filter_composite', action="store_true", help="filter out composite mention queries")
     parser.add_argument('--filter_duplicate', action="store_true", help="filter out duplicate queries")
@@ -85,8 +84,7 @@ def main(args):
         biosyn=biosyn,
         eval_dictionary=eval_dictionary,
         eval_queries=eval_queries,
-        topk=args.topk,
-        score_mode=args.score_mode
+        topk=args.topk
     )
     
     LOGGER.info("acc@1={}".format(result_evalset['acc1']))
