@@ -8,36 +8,37 @@ LOGGER = logging.getLogger(__name__)
 
 
 class RerankNet(nn.Module):
-    def __init__(self, encoder, learning_rate, weight_decay, sparse_weight, use_cuda):
+    def __init__(self, encoder, learning_rate, weight_decay,  use_cuda):
 
-        LOGGER.info("RerankNet! learning_rate={} weight_decay={} sparse_weight={} use_cuda={}".format(
-            learning_rate,weight_decay,sparse_weight,use_cuda
+        LOGGER.info("RerankNet! learning_rate={} weight_decay={} use_cuda={}".format(
+            learning_rate,weight_decay,use_cuda
         ))
         super(RerankNet, self).__init__()
         self.encoder = encoder
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.use_cuda = use_cuda
-        self.sparse_weight = sparse_weight
-        self.optimizer = optim.Adam([
-            {'params': self.encoder.parameters()},
-            {'params' : self.sparse_weight, 'lr': 0.01, 'weight_decay': 0}], 
-            lr=self.learning_rate, weight_decay=self.weight_decay
+        
+        self.optimizer = optim.AdamW(
+            params=self.encoder.parameters(),
+            lr=self.learning_rate,
+            weight_decay=self.weight_decay,
+            fused=self.use_cuda
         )
-        
+
+
         self.criterion = marginal_nll
-        
+
     def forward(self, x):
         """
         query : (N, h), candidates : (N, topk, h)
 
         output : (N, topk)
         """
-        query_token, candidate_tokens, candidate_s_scores = x
+        query_token, candidate_tokens = x
         batch_size, topk, max_length = candidate_tokens['input_ids'].shape
 
         if self.use_cuda:
-            candidate_s_scores = candidate_s_scores.cuda()
             query_token['input_ids'] = query_token['input_ids'].to('cuda')
             query_token['token_type_ids'] = query_token['token_type_ids'].to('cuda')
             query_token['attention_mask'] = query_token['attention_mask'].to('cuda')
@@ -63,7 +64,7 @@ class RerankNet(nn.Module):
         
         # score dense candidates
         candidate_d_score = torch.bmm(query_embed, candidate_embeds.permute(0,2,1)).squeeze(1)
-        score = self.sparse_weight * candidate_s_scores + candidate_d_score
+        score = candidate_d_score
         return score
 
     def reshape_candidates_for_encoder(self, candidates):
