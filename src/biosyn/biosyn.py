@@ -60,7 +60,9 @@ class BioSyn(object):
         return self
 
     def load_dense_encoder(self, model_name_or_path):
-        self.encoder = AutoModel.from_pretrained(model_name_or_path)
+        
+        self.encoder = AutoModel.from_pretrained(model_name_or_path, use_safetensors=True)
+
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         if self.use_cuda:
             self.encoder = self.encoder.to("cuda")
