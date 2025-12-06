@@ -1,0 +1,28 @@
+9288106||40|61||Modifier||ataxia-telangiectasia||MESH:D001260
+9288106||72|97||SpecificDisease||sporadic T-cell leukaemia||MESH:D015458
+9288106||99|120||SpecificDisease||Ataxia-telangiectasia||MESH:D001260
+9288106||122|125||SpecificDisease||A-T||MESH:D001260
+9288106||132|163||DiseaseClass||recessive multi-system disorder||MESH:D030342
+9288106||235|241||DiseaseClass||cancer||MESH:D009369
+9288106||254|273||DiseaseClass||lymphoid neoplasias||MESH:D008223
+9288106||304|307||Modifier||A-T||MESH:D001260
+9288106||389|395||Modifier||tumour||MESH:D009369
+9288106||419|459||SpecificDisease||sporadic T-cell prolymphocytic leukaemia||MESH:D015461
+9288106||461|466||SpecificDisease||T-PLL||MESH:D015461
+9288106||517|540||SpecificDisease||mature T-cell leukaemia||MESH:D015458
+9288106||549|552||SpecificDisease||A-T||MESH:D001260
+9288106||606|611||SpecificDisease||T-PLL||MESH:D015461
+9288106||663|666||SpecificDisease||A-T||MESH:D001260
+9288106||713|722||DiseaseClass||leukaemia||MESH:D007938
+9288106||1030|1035||SpecificDisease||T-PLL||MESH:D015461
+9288106||1070|1073||Modifier||A-T||MESH:D001260
+9288106||1160|1166||Modifier||tumour||MESH:D009369
+9288106||1212|1221||DiseaseClass||leukaemia||MESH:D007938
+9288106||1279|1285||Modifier||tumour||MESH:D009369
+9288106||1309|1338||SpecificDisease||B-cell non-Hodgkins lymphomas||MESH:D016393
+9288106||1340|1345||SpecificDisease||B-NHL||MESH:D016393
+9288106||1353|1358||Modifier||B-NHL||MESH:D016393
+9288106||1517|1524||DiseaseClass||tumours||MESH:D009369
+9288106||1594|1608||SpecificDisease||sporadic T-PLL||MESH:D015461
+9288106||1641|1647||Modifier||tumour||MESH:D009369
+9288106||1741|1746||SpecificDisease||T-PLL||MESH:D015461

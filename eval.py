@@ -88,6 +88,8 @@ def main(args):
     )
     
     LOGGER.info("acc@1={}".format(result_evalset['acc1']))
+    LOGGER.info("acc@2={}".format(result_evalset['acc2']))
+    LOGGER.info("acc@4={}".format(result_evalset['acc4']))
     LOGGER.info("acc@5={}".format(result_evalset['acc5']))
     
     if args.save_predictions:

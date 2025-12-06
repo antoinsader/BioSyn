@@ -1,0 +1,13 @@
+9931324||103|131||DiseaseClass||congenital eye malformations||MESH:D005124
+9931324||175|183||SpecificDisease||aniridia||MESH:D015783
+9931324||185|215||SpecificDisease||congenital absence of the iris||MESH:D015783
+9931324||234|257||DiseaseClass||malformation of the eye||MESH:D005124
+9931324||293|301||Modifier||aniridia||MESH:D015783
+9931324||742|750||Modifier||aniridia||MESH:D015783
+9931324||976|984||SpecificDisease||aniridia||MESH:D015783
+9931324||1083|1099||SpecificDisease||ectopia pupillae||MESH:C536185
+9931324||1101|1117||SpecificDisease||displaced pupils||MESH:C536185
+9931324||1123|1143||SpecificDisease||congenital nystagmus||MESH:D020417
+9931324||1145|1159||SpecificDisease||searching gaze||MESH:D020417
+9931324||1208|1216||Modifier||aniridia||MESH:D015783
+9931324||1549|1570||DiseaseClass||PAX6 -related disease||MESH:D015783
